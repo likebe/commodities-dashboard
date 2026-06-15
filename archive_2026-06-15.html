@@ -59,14 +59,14 @@ th .ind{font-size:9px;margin-left:3px;color:var(--accent)}
 .blk .t{font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
 .blk.cat .t{color:var(--warn)}
 .blk ul{list-style:none}
-.blk li{font-size:12.5px;color:#c9d1d9;padding:2.5px 0 2.5px 18px;position:relative}
-.blk li .ar{position:absolute;left:0;top:4px;font-size:12px;font-weight:700;line-height:1.2}
+.blk li{font-size:12.5px;color:#c9d1d9;padding:3px 0 3px 26px;position:relative}
+.blk li .ar{position:absolute;left:0;top:2px;font-size:17px;font-weight:900;line-height:1.1}
 .blk li.aup .ar{color:var(--up)}
 .blk li.adn .ar{color:var(--down)}
 .blk li.ant .ar{color:var(--muted)}
 .blk li .dt{color:var(--warn);font-weight:600}
 .arlegend{color:var(--muted);font-size:11.5px;margin:2px 0 0 14px}
-.arlegend b.u{color:var(--up)}.arlegend b.d{color:var(--down)}.arlegend b.n{color:var(--muted)}
+.arlegend b{font-size:15px}.arlegend b.u{color:var(--up)}.arlegend b.d{color:var(--down)}.arlegend b.n{color:var(--muted)}
 a.src{color:#6e7681;text-decoration:none;border-bottom:1px dotted #6e7681;font-size:11px}
 a.src:hover{color:var(--accent);border-bottom-color:var(--accent)}
 .tag{display:inline-block;background:#1f2a3c;color:var(--accent);border-radius:4px;padding:1px 7px;font-size:11px;margin-right:5px;white-space:nowrap}
@@ -89,6 +89,7 @@ a.src:hover{color:var(--accent);border-bottom-color:var(--accent)}
 <header>
   <h1>全球大宗商品 Dashboard <span>| Global Commodities Monitor</span></h1>
   <div class="sub">数据截至 2026-06-12/15（美东时间）· 每日早8点自动更新 · 覆盖：能源 / 贵金属 / 基本金属 / 黑色系 / 农产品 · 价格为前月合约或现货，每条结论附可点击来源链接</div>
+  <div class="sub" style="margin-top:6px">🕒 最新更新：<b style="color:var(--accent)">2026-06-15 03:21（美东）</b> · 下次更新：2026-06-16 早8点（美东）</div>
 </header>
 
 <nav>
@@ -110,7 +111,7 @@ a.src:hover{color:var(--accent);border-bottom-color:var(--accent)}
 </div>
 <div class="ovbar">
   <div class="fbtns" id="ovfilters"></div>
-  <button class="dlbtn" id="ovdl">⤓ 导出 Excel</button>
+  <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="dlbtn" id="ovdl">⤓ 导出总览 Excel</button><button class="dlbtn" id="ovdltrend">⤓ 导出走势数据 Excel</button></div>
 </div>
 <div id="ovtable"></div>
 
@@ -143,7 +144,7 @@ a.src:hover{color:var(--accent);border-bottom-color:var(--accent)}
 </div>
 
 <h2 id="energy">能源 <span class="en">Energy</span></h2>
-<p class="arlegend">每条 <b class="u">↑</b> 利多 / <b class="d">↓</b> 利空 / <b class="n">→</b> 中性或双向（针对该品种价格的方向含义）</p>
+<p class="arlegend">每条 <b class="u">▲</b> 利多 / <b class="d">▼</b> 利空 / <b class="n">→</b> 中性或双向（针对该品种价格的方向含义）</p>
 <div class="grid" id="sec-energy"></div>
 
 <h2 id="metals">贵金属与基本金属 <span class="en">Precious & Base Metals</span></h2>
@@ -188,8 +189,8 @@ a.src:hover{color:var(--accent);border-bottom-color:var(--accent)}
 <div class="timeline" id="cal"></div>
 
 <div class="foot">
-  <b>数据说明与免责：</b>价格为各品种前月/最活跃合约或基准现货，截至2026-06-12/15不等；周度走势由各时点锚定价重构，部分为近似值（标注约~）。LME铜/铝/锌/镍走势为Westmetall现货结算价（精确）。部分品种YTD以1年变化替代（标注yl）。锂/铁矿/SHFE的精确日度fix部分来自付费源，已用最接近的公开锚点并标注约。卡片内每条驱动/新闻/催化剂前的箭头表示对该品种价格的方向含义（↑利多/↓利空/→中性或双向），为编辑判断。来源：CNBC、EIA、IEA、CFTC、WGC、Westmetall、USDA、MPOB、TradingEconomics、Reuters/Bloomberg/Al Jazeera/PBS报道、各投行公开报告引述（每条结论附可点击来源）。本dashboard为信息聚合，非投资建议。<br><br>
-  <b>下次更新：</b>2026-06-16（每日早8点自动更新）
+  <b>数据说明与免责：</b>价格为各品种前月/最活跃合约或基准现货，截至2026-06-12/15不等；周度走势由各时点锚定价重构，部分为近似值（标注约~）。LME铜/铝/锌/镍走势为Westmetall现货结算价（精确）。部分品种YTD以1年变化替代（标注yl）。锂/铁矿/SHFE的精确日度fix部分来自付费源，已用最接近的公开锚点并标注约。卡片内每条驱动/新闻/催化剂前的箭头表示对该品种价格的方向含义（▲利多/▼利空/→中性或双向），为编辑判断。来源：CNBC、EIA、IEA、CFTC、WGC、Westmetall、USDA、MPOB、TradingEconomics、Reuters/Bloomberg/Al Jazeera/PBS报道、各投行公开报告引述（每条结论附可点击来源）。本dashboard为信息聚合，非投资建议。<br><br>
+  <b>最新更新：</b>2026-06-15 03:21（美东） · <b>下次更新：</b>2026-06-16（每日早8点自动更新）
 </div>
 
 </div>
@@ -381,12 +382,29 @@ function exportData(){
   }
 }
 document.getElementById('ovdl').addEventListener('click',exportData);
+function exportTrend(){
+  const header=["板块","品种","英文/合约","日期","价格"];
+  const rows=[];
+  for(const d of DATA){const sn=SECNAME[d.sec];for(const p of d.trend){rows.push([sn,d.nm,d.en,p[0],p[1]]);}}
+  if(window.XLSX){
+    const ws=XLSX.utils.aoa_to_sheet([header].concat(rows));
+    ws['!cols']=[{wch:6},{wch:14},{wch:22},{wch:10},{wch:10}];
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"走势数据");
+    XLSX.writeFile(wb,"commodities_trend_2026-06-15.xlsx");
+  }else{
+    let csv=String.fromCharCode(0xFEFF)+header.join(",")+"\n";
+    rows.forEach(function(r){csv+=r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(",")+"\n";});
+    const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="commodities_trend_2026-06-15.csv";document.body.appendChild(a);a.click();a.remove();
+  }
+}
+document.getElementById('ovdltrend').addEventListener('click',exportTrend);
 renderOv();
 
 // ---- Cards (with directional arrows) ----
 function liArrow(x){
   let dir='n',t=x;const m=x.match(/^\[(u|d|n)\]/);if(m){dir=m[1];t=x.slice(3);}
-  const sym=dir==='u'?'↑':(dir==='d'?'↓':'→');
+  const sym=dir==='u'?'▲':(dir==='d'?'▼':'→');
   const cls=dir==='u'?'aup':(dir==='d'?'adn':'ant');
   return `<li class="${cls}"><span class="ar">${sym}</span>${t}</li>`;
 }
