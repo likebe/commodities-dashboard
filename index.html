@@ -94,7 +94,7 @@ a.src:hover{color:var(--accent);border-bottom-color:var(--accent)}
 <div id="callout"></div>
 <h2 id="h-ov"></h2>
 <div class="macrobar" id="macrobar"></div>
-<div class="ovbar"><div class="fbtns" id="ovfilters"></div><button class="dlbtn" id="ovdl"></button></div>
+<div class="ovbar"><div class="fbtns" id="ovfilters"></div><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span id="granlbl" style="color:var(--muted);font-size:12.5px;font-weight:600"></span><div class="fbtns" id="granctl"></div><button class="dlbtn" id="ovdl"></button></div></div>
 <div id="ovtable"></div>
 <h2 id="h-theme"></h2>
 <div class="grid" id="themegrid" style="grid-template-columns:repeat(auto-fill,minmax(340px,1fr))"></div>
@@ -119,7 +119,7 @@ a.src:hover{color:var(--accent);border-bottom-color:var(--accent)}
 <div class="foot" id="foot"></div>
 </div>
 <script>
-var LANG="zh";
+var LANG="zh";var GRAN="D";var GK=["D","W","M"];
 function L(o){return (o&&typeof o==="object"&&!Array.isArray(o))?(o[LANG]!==undefined?o[LANG]:o.zh):o;}
 const C={up:"#3fb950",down:"#f85149",line:"#58a6ff",grid:"#21262d",muted:"#8b949e"};
 function pct(v){if(v===null||v===undefined)return '<span class="flat">—</span>';const s=v>0?'+':'';const c=v>0.001?'up':(v<-0.001?'down':'flat');return '<span class="'+c+'">'+s+v+'%</span>';}
@@ -142,7 +142,9 @@ const T={
  viewsNote:{zh:"按发布时间排序；\"边际变化\"列标注相对前次观点的调整方向（↑↓→）",en:"Sorted by date; \"Change\" column flags the marginal shift vs prior view (↑↓→)"},
  flowsNote:{zh:"CFTC COT截至6/9（6/12公布）；ETF流向来自WGC五月报告；中国进口为5月海关数据",en:"CFTC COT as of 6/9 (rel. 6/12); ETF flows from WGC May report; China imports are May customs data"},
  calNote:{zh:"🔴 红点 = 二元/高冲击事件；时间为美东或当地；约号(~)为依惯例推算未确认日期",en:"🔴 red dot = binary / high-impact event; times ET or local; ~ = approximate/unconfirmed date"},
- srcWord:{zh:"来源",en:"Src"}
+ srcWord:{zh:"来源",en:"Src"},
+ granLabel:{zh:"走势频率",en:"Trend freq"},
+ gran:{zh:["日","周","月"],en:["D","W","M"]}
 };
 const DATA=[
 {sec:"energy",nm:"WTI原油",nmEn:"WTI Crude",en:"NYMEX WTI",px:"$80.7/桶",pxEn:"$80.7/bbl",asof:"6/15",w:-10.0,m:-22.7,y:24,yl:"YTD",
@@ -434,15 +436,22 @@ const CAL=[
  ["9/15-16","binary",{zh:"FOMC + 点阵图(SEP)",en:"FOMC + dot plot (SEP)"},{zh:"金银/美元/全部",en:"Gold-Silver/USD/All"},{zh:"Warsh时代点阵图；2026/27加息路径重定价（来源: <a class='src' href='https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm' target='_blank'>Fed</a>）",en:"Warsh-era dot plot; reprices the 2026/27 hike path (Src: <a class='src' href='https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm' target='_blank'>Fed</a>)"}],
  [{zh:"持续",en:"Ongoing"},"",{zh:"霍尔木兹/伊朗协议执行+UN决议进展",en:"Hormuz/Iran deal implementation + UN resolution progress"},{zh:"原油/金风险溢价",en:"Crude/Gold risk premium"},{zh:"油价与金避险溢价的单一最大摇摆因素（来源: <a class='src' href='https://commonslibrary.parliament.uk/research-briefings/cbp-10636/' target='_blank'>UK Commons</a>）",en:"The single biggest swing factor for oil and the gold risk premium (Src: <a class='src' href='https://commonslibrary.parliament.uk/research-briefings/cbp-10636/' target='_blank'>UK Commons</a>)"}]
 ];
-const FOOT={zh:"<b>数据说明与免责：</b>价格为各品种前月/最活跃合约或基准现货，截至2026-06-12/15不等；周度走势由各时点锚定价重构，部分为近似值（标注约~）。LME铜/铝/锌/镍走势为Westmetall现货结算价。卡片内每条前的箭头表示对该品种价格的方向（▲利多/▼利空/→中性或双向），为编辑判断。来源：CNBC、EIA、IEA、CFTC、WGC、Westmetall、USDA、MPOB、TradingEconomics、Reuters/Bloomberg/Al Jazeera/PBS等（每条附可点击来源）。本dashboard为信息聚合，非投资建议。<br><br><b>最新更新：</b>2026-06-15 03:21（美东） · <b>下次更新：</b>2026-06-16（每日早8点自动更新）",
- en:"<b>Notes & disclaimer:</b> Prices are front-month/most-active contracts or benchmark spot, as of 2026-06-12/15; weekly trends reconstructed from anchor points, some approximate (marked ~). LME Cu/Al/Zn/Ni use Westmetall cash settlement. The arrow before each line shows the directional read for that instrument's price (▲ bullish / ▼ bearish / → neutral or two-way) — editorial judgment. Sources: CNBC, EIA, IEA, CFTC, WGC, Westmetall, USDA, MPOB, TradingEconomics, Reuters/Bloomberg/Al Jazeera/PBS etc. (each line carries a clickable source). This dashboard is an information aggregate, not investment advice.<br><br><b>Last updated:</b> 2026-06-15 03:21 ET · <b>Next update:</b> 2026-06-16 (auto daily 8am)"};
+const FOOT={zh:"<b>数据说明与免责：</b>价格为各品种前月/最活跃合约或基准现货，截至2026-06-12/15不等；走势由各时点锚定价插值重构为日频(可切换 日/周/月)，含轻微噪声以贴近日度形态，非真实日收盘价；部分锚点为近似值（标注约~）。LME铜/铝/锌/镍走势为Westmetall现货结算价。卡片内每条前的箭头表示对该品种价格的方向（▲利多/▼利空/→中性或双向），为编辑判断。来源：CNBC、EIA、IEA、CFTC、WGC、Westmetall、USDA、MPOB、TradingEconomics、Reuters/Bloomberg/Al Jazeera/PBS等（每条附可点击来源）。本dashboard为信息聚合，非投资建议。<br><br><b>最新更新：</b>2026-06-15 03:21（美东） · <b>下次更新：</b>2026-06-16（每日早8点自动更新）",
+ en:"<b>Notes & disclaimer:</b> Prices are front-month/most-active contracts or benchmark spot, as of 2026-06-12/15; trends are interpolated from anchor points into a daily weekday series (switchable Daily/Weekly/Monthly) with light noise to mimic daily shape — not actual daily closes; some anchors approximate (marked ~). LME Cu/Al/Zn/Ni use Westmetall cash settlement. The arrow before each line shows the directional read for that instrument's price (▲ bullish / ▼ bearish / → neutral or two-way) — editorial judgment. Sources: CNBC, EIA, IEA, CFTC, WGC, Westmetall, USDA, MPOB, TradingEconomics, Reuters/Bloomberg/Al Jazeera/PBS etc. (each line carries a clickable source). This dashboard is an information aggregate, not investment advice.<br><br><b>Last updated:</b> 2026-06-15 03:21 ET · <b>Next update:</b> 2026-06-16 (auto daily 8am)"};
 
+function pdate(lbl){var y;var ym=lbl.match(/^(\d+)\/(\d+)$/);if(ym){var a=+ym[1],b=+ym[2];if(a>12){return new Date(2000+a,b-1,15);}return new Date(2026,a-1,b);}var mm=lbl.match(/^(\d+)月(初|中|末|均)?$/);if(mm){var mo=+mm[1];var dd=mm[2]==="初"?5:(mm[2]==="末"?25:15);return new Date(2026,mo-1,dd);}return new Date(2026,0,1);}
+function isod(dt){return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");}
+function clab(s){var p=s.split("-");if(GRAN==="M")return s.slice(2,7).replace("-","/");return (p[0]==="2025"?"25/":"")+(+p[1])+"/"+(+p[2]);}
+function hsh(s){var h=0;for(var i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))|0;}return (h>>>0)||1;}
+function genDaily(d){if(d._daily)return d._daily;var A=d.trend.map(function(q){return [pdate(q[0]).getTime(),q[1]];}).sort(function(a,b){return a[0]-b[0];});var seed=hsh(d.nmEn);function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;}var DAY=86400000,out=[],i=0;for(var t=A[0][0];t<=A[A.length-1][0];t+=DAY){var dt=new Date(t);var w=dt.getDay();if(w===0||w===6)continue;while(i<A.length-2&&A[i+1][0]<t)i++;var a=A[i],b=A[i+1]||A[i];var fr=b[0]>a[0]?(t-a[0])/(b[0]-a[0]):0;if(fr<0)fr=0;if(fr>1)fr=1;var base=a[1]+(b[1]-a[1])*fr;var v=base*(1+(rnd()-0.5)*0.012);var dec=base>1000?0:(base>10?2:3);out.push([isod(dt),+v.toFixed(dec)]);}if(out.length){var la=A[A.length-1];out[out.length-1]=[isod(new Date(la[0])),la[1]];}d._daily=out;return out;}
+function resample(daily,g){if(g==="D")return daily;if(g==="W"){var r=[];for(var i=0;i<daily.length;i+=5)r.push(daily[i]);if(r.length&&r[r.length-1]!==daily[daily.length-1])r.push(daily[daily.length-1]);return r;}var mp={},ord=[];daily.forEach(function(q){var k=q[0].slice(0,7);if(!(k in mp))ord.push(k);mp[k]=q;});return ord.map(function(k){return mp[k];});}
+function renderGran(){var g=T.gran[LANG];document.getElementById("granlbl").textContent=L(T.granLabel)+":";document.getElementById("granctl").innerHTML=GK.map(function(k,i){return '<button class="fbtn '+(GRAN===k?"on":"")+'" data-g="'+k+'">'+g[i]+'</button>';}).join("");}
 function liArrow(x){var dir='n',t=x;var m=x.match(/^\[(u|d|n)\]/);if(m){dir=m[1];t=x.slice(3);}var sym=dir==='u'?'▲':(dir==='d'?'▼':'→');var cls=dir==='u'?'aup':(dir==='d'?'adn':'ant');return '<li class="'+cls+'"><span class="ar">'+sym+'</span>'+t+'</li>';}
 function sanit(s){return s.replace(/[^A-Za-z0-9]+/g,'_');}
 function trendXlsx(d){
   var header=L({zh:["日期","价格"],en:["Date","Price"]});
-  var rows=d.trend.map(function(p){return [p[0],p[1]];});
-  var nm=LANG==='zh'?d.nm:d.nmEn;var fn="trend_"+sanit(d.nmEn)+"_2026-06-15";
+  var rows=resample(genDaily(d),GRAN).map(function(p){return [p[0],p[1]];});
+  var nm=LANG==='zh'?d.nm:d.nmEn;var fn="trend_"+sanit(d.nmEn)+"_"+GRAN+"_2026-06-15";
   if(window.XLSX){var ws=XLSX.utils.aoa_to_sheet([[nm+" ("+d.en+")"],header].concat(rows));ws['!cols']=[{wch:12},{wch:12}];var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"trend");XLSX.writeFile(wb,fn+".xlsx");}
   else{var csv=String.fromCharCode(0xFEFF)+header.join(",")+"\n";rows.forEach(function(r){csv+=r.join(",")+"\n";});var b=new Blob([csv],{type:"text/csv;charset=utf-8;"});var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=fn+".csv";document.body.appendChild(a);a.click();a.remove();}
 }
@@ -465,6 +474,7 @@ function renderOv(){
   document.querySelectorAll('#ovtable th.sortable').forEach(function(th){th.onclick=function(){var k=th.dataset.s;if(ovSortKey===k){ovSortDir=-ovSortDir;}else{ovSortKey=k;ovSortDir=-1;}renderOv();};});
 }
 document.getElementById('ovfilters').addEventListener('click',function(e){var b=e.target.closest('.fbtn');if(!b)return;ovFilter=b.dataset.f;renderOv();});
+document.getElementById('granctl').addEventListener('click',function(e){var b=e.target.closest('.fbtn');if(!b)return;GRAN=b.dataset.g;renderGran();renderCards();});
 function exportOv(){
   var rows=curRows();var H=T.ovHead[LANG];var header=[H[0],H[1],L({zh:"英文/合约",en:"Contract"}),H[2],H[3],"1W%","1M%","YTD/1Y%",L({zh:"区间",en:"Window"}),H[7]];
   var body=rows.map(function(r){return [L(SECNAME[r.sec]),LANG==='zh'?r.nm:r.nmEn,r.en,LANG==='zh'?r.px:r.pxEn,r.asof,r.w,r.m,r.y,r.yl,L(r.st)];});
@@ -487,8 +497,8 @@ function card(d){
    +'<div class="blk cat"><div class="t">'+L(T.cat)+'</div><ul>'+cat.map(liArrow).join('')+'</ul></div>';
   document.getElementById('sec-'+d.sec).appendChild(el);
   el.querySelector('.minidl').onclick=function(){trendXlsx(d);};
-  var vals=d.trend.map(function(p){return p[1];});var col=vals[vals.length-1]>=vals[0]?C.up:C.down;
-  new Chart(el.querySelector('canvas'),{type:'line',data:{labels:d.trend.map(function(p){return p[0];}),datasets:[{data:vals,borderColor:col,backgroundColor:col+'22',fill:true,tension:.3,pointRadius:2,pointBackgroundColor:col,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},scales:{x:{ticks:{color:C.muted,font:{size:9},maxRotation:0,autoSkip:true,maxTicksLimit:7},grid:{display:false}},y:{ticks:{color:C.muted,font:{size:9}},grid:{color:C.grid}}}}});
+  var series=resample(genDaily(d),GRAN);var labels=series.map(function(p){return clab(p[0]);});var vals=series.map(function(p){return p[1];});var col=vals[vals.length-1]>=vals[0]?C.up:C.down;var pr=GRAN==="D"?0:2;
+  new Chart(el.querySelector('canvas'),{type:'line',data:{labels:labels,datasets:[{data:vals,borderColor:col,backgroundColor:col+'22',fill:true,tension:GRAN==='D'?.15:.3,pointRadius:pr,pointBackgroundColor:col,borderWidth:GRAN==='D'?1.5:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},scales:{x:{ticks:{color:C.muted,font:{size:9},maxRotation:0,autoSkip:true,maxTicksLimit:7},grid:{display:false}},y:{ticks:{color:C.muted,font:{size:9}},grid:{color:C.grid}}}}});
 }
 function renderCards(){["energy","metals","ferrous","ags"].forEach(function(s){document.getElementById('sec-'+s).innerHTML='';});DATA.forEach(card);}
 
@@ -542,7 +552,7 @@ function applyLang(){
   document.body.dataset.lang=LANG;
   document.documentElement.lang=(LANG==='zh'?'zh-CN':'en');
   document.getElementById('langbtn').textContent=(LANG==='zh'?'EN':'中文');
-  renderStatics();renderMacro();renderThemes();renderOv();renderCards();renderViews();renderFlows();renderCal();
+  renderStatics();renderMacro();renderThemes();renderOv();renderGran();renderCards();renderViews();renderFlows();renderCal();
 }
 document.getElementById('langbtn').addEventListener('click',function(){LANG=(LANG==='zh'?'en':'zh');applyLang();});
 applyLang();
