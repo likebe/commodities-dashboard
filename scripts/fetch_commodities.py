@@ -1,36 +1,52 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Fetch REAL daily commodity prices and write data.json for the dashboard.
-Runs on GitHub Actions (network OK there). Stdlib only.
+Fetch REAL daily commodity prices -> data.json for the dashboard.
+Runs on GitHub Actions. Stdlib only.
 
-Sources (most accurate free):
-  WTI       FRED DCOILWTICO        (EIA Cushing spot, $/bbl)
-  Brent     FRED DCOILBRENTEU      (Europe Brent spot, $/bbl)
-  US Nat Gas FRED DHHNGSP          (Henry Hub spot, $/MMBtu)
-  Gold      FRED GOLDAMGBD228NLBM  (LBMA London AM fix, $/oz)
-  Silver    Stooq xagusd           (silver spot, $/oz)
-  LME Copper Stooq hg.f            (COMEX copper $/lb -> x2204.62 = $/t LME proxy)
-TTF (Europe gas) has no reliable free daily feed -> left to the baked/approx value.
+Per instrument it tries sources in order until one returns data:
+  1) Yahoo Finance chart API (near-real-time daily, covers all)   <- preferred (fresh)
+  2) FRED fredgraph.csv (authoritative but lags ~1wk; energy only) <- fallback
+  3) Stooq daily CSV (metals fallback; may be IP-blocked on cloud)
+Whatever a run can't get is logged in data.json["errors"] and the page
+falls back to its baked value for that instrument.
+TTF (Europe gas) has no reliable free daily feed -> left to baked/approx.
 """
 import csv, io, json, sys, datetime, urllib.request
 
-UA = {"User-Agent": "Mozilla/5.0 (commodities-dashboard data bot)"}
-TODAY = datetime.date.today()
+UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"}
+LB_TO_T = 2204.62
 
 def http_get(url):
     req = urllib.request.Request(url, headers=UA)
     with urllib.request.urlopen(req, timeout=40) as r:
         return r.read().decode("utf-8", "replace")
 
-def parse_fred(text):
-    """FRED fredgraph.csv -> list of (date, float) ascending; '.' = missing."""
+# ---------- source parsers -> ascending list of (date, value) ----------
+def src_yahoo(symbol, mult=1.0):
+    url = "https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=1d&range=6mo" % symbol
+    j = json.loads(http_get(url))
+    res = j.get("chart", {}).get("result")
+    if not res:
+        raise ValueError("yahoo empty")
+    r0 = res[0]
+    ts = r0.get("timestamp") or []
+    closes = r0.get("indicators", {}).get("quote", [{}])[0].get("close") or []
     out = []
-    rdr = csv.reader(io.StringIO(text))
-    rows = list(rdr)
-    if not rows:
-        return out
-    for row in rows[1:]:
+    for t, c in zip(ts, closes):
+        if c is None:
+            continue
+        d = datetime.datetime.fromtimestamp(t, datetime.timezone.utc).date()
+        out.append((d, float(c) * mult))
+    out.sort(key=lambda x: x[0])
+    if not out:
+        raise ValueError("yahoo no points")
+    return out
+
+def src_fred(series_id):
+    text = http_get("https://fred.stlouisfed.org/graph/fredgraph.csv?id=%s" % series_id)
+    out = []
+    for row in list(csv.reader(io.StringIO(text)))[1:]:
         if len(row) < 2:
             continue
         d, v = row[0].strip(), row[1].strip()
@@ -41,21 +57,17 @@ def parse_fred(text):
         except ValueError:
             continue
     out.sort(key=lambda x: x[0])
+    if not out:
+        raise ValueError("fred no data")
     return out
 
-def parse_stooq(text, mult=1.0):
-    """Stooq daily CSV (Date,Open,High,Low,Close,Volume) -> list of (date, close*mult)."""
+def src_stooq(symbol, mult=1.0):
+    text = http_get("https://stooq.com/q/d/l/?s=%s&i=d" % symbol)
+    rows = list(csv.reader(io.StringIO(text)))
+    if not rows or not rows[0] or "Date" not in rows[0][0]:
+        raise ValueError("stooq blocked/empty")
+    ci = rows[0].index("Close")
     out = []
-    rdr = csv.reader(io.StringIO(text))
-    rows = list(rdr)
-    if not rows or "Date" not in rows[0][0]:
-        # stooq returns 'No data' or html on bad symbol
-        return out
-    hdr = rows[0]
-    try:
-        ci = hdr.index("Close")
-    except ValueError:
-        return out
     for row in rows[1:]:
         if len(row) <= ci:
             continue
@@ -64,10 +76,12 @@ def parse_stooq(text, mult=1.0):
         except (ValueError, IndexError):
             continue
     out.sort(key=lambda x: x[0])
+    if not out:
+        raise ValueError("stooq no data")
     return out
 
+# ---------- metrics ----------
 def val_on_or_before(series, target):
-    """Last value with date <= target."""
     pick = None
     for d, v in series:
         if d <= target:
@@ -77,97 +91,72 @@ def val_on_or_before(series, target):
     return pick
 
 def pct(new, old):
-    if old in (None, 0):
-        return None
-    return round((new / old - 1.0) * 100.0, 1)
+    return None if old in (None, 0) else round((new / old - 1.0) * 100.0, 1)
 
 def compute(series, decimals):
-    """Return dict: latest px, asof, w/m/ytd %, and recent daily series (~180d)."""
     if not series:
         return None
     last_d, last_v = series[-1]
     w = val_on_or_before(series, last_d - datetime.timedelta(days=7))
     m = val_on_or_before(series, last_d - datetime.timedelta(days=30))
-    # YTD: vs last close of prior year (fallback first close this year)
-    prior_year_end = datetime.date(last_d.year - 1, 12, 31)
-    yb = val_on_or_before(series, prior_year_end)
+    yb = val_on_or_before(series, datetime.date(last_d.year - 1, 12, 31))
     if yb is None:
         yb = next(((d, v) for d, v in series if d.year == last_d.year), None)
     cutoff = last_d - datetime.timedelta(days=185)
     recent = [[d.isoformat(), round(v, decimals)] for d, v in series if d >= cutoff]
-    return {
-        "px_val": round(last_v, decimals),
-        "asof": last_d.isoformat(),
-        "w": pct(last_v, w[1] if w else None),
-        "m": pct(last_v, m[1] if m else None),
-        "y": pct(last_v, yb[1] if yb else None),
-        "series": recent,
-    }
+    return {"px_val": round(last_v, decimals), "asof": last_d.isoformat(),
+            "w": pct(last_v, w[1] if w else None), "m": pct(last_v, m[1] if m else None),
+            "y": pct(last_v, yb[1] if yb else None), "series": recent}
 
-# instrument config: nmEn key -> (fetcher, url, mult, decimals, px_fmt, src)
-LB_TO_T = 2204.62
+# nmEn -> (decimals, px_tpl, [ (label,url,callable) ... ])
 CFG = [
-    ("WTI Crude",  "fred",  "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DCOILWTICO",     1.0, 2, "~${v}/bbl",  "FRED DCOILWTICO (EIA WTI spot)",   "https://fred.stlouisfed.org/series/DCOILWTICO"),
-    ("Brent Crude","fred",  "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DCOILBRENTEU",   1.0, 2, "~${v}/bbl",  "FRED DCOILBRENTEU (Brent spot)",   "https://fred.stlouisfed.org/series/DCOILBRENTEU"),
-    ("US Nat Gas", "fred",  "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DHHNGSP",        1.0, 2, "~${v}/MMBtu","FRED DHHNGSP (Henry Hub spot)",    "https://fred.stlouisfed.org/series/DHHNGSP"),
-    ("Gold",       "fred",  "https://fred.stlouisfed.org/graph/fredgraph.csv?id=GOLDAMGBD228NLBM",1.0,2, "~${v}/oz",  "FRED LBMA Gold AM fix",            "https://fred.stlouisfed.org/series/GOLDAMGBD228NLBM"),
-    ("Silver",     "stooq", "https://stooq.com/q/d/l/?s=xagusd&i=d",                             1.0, 2, "~${v}/oz",  "Stooq XAGUSD (silver spot)",       "https://stooq.com/q/d/l/?s=xagusd&i=d"),
-    ("LME Copper", "stooq", "https://stooq.com/q/d/l/?s=hg.f&i=d",                          LB_TO_T, 0, "~${v}/t",   "Stooq COMEX HG x2204.62 (LME proxy)","https://stooq.com/q/d/l/?s=hg.f&i=d"),
+    ("WTI Crude",  2, "~${v}/bbl",  [("Yahoo CL=F","https://finance.yahoo.com/quote/CL=F", lambda: src_yahoo("CL=F")),
+                                      ("FRED DCOILWTICO","https://fred.stlouisfed.org/series/DCOILWTICO", lambda: src_fred("DCOILWTICO"))]),
+    ("Brent Crude",2, "~${v}/bbl",  [("Yahoo BZ=F","https://finance.yahoo.com/quote/BZ=F", lambda: src_yahoo("BZ=F")),
+                                      ("FRED DCOILBRENTEU","https://fred.stlouisfed.org/series/DCOILBRENTEU", lambda: src_fred("DCOILBRENTEU"))]),
+    ("US Nat Gas", 2, "~${v}/MMBtu",[("Yahoo NG=F","https://finance.yahoo.com/quote/NG=F", lambda: src_yahoo("NG=F")),
+                                      ("FRED DHHNGSP","https://fred.stlouisfed.org/series/DHHNGSP", lambda: src_fred("DHHNGSP"))]),
+    ("Gold",       0, "~${v}/oz",   [("Yahoo GC=F","https://finance.yahoo.com/quote/GC=F", lambda: src_yahoo("GC=F")),
+                                      ("Stooq XAUUSD","https://stooq.com/q/d/l/?s=xauusd&i=d", lambda: src_stooq("xauusd"))]),
+    ("Silver",     2, "~${v}/oz",   [("Yahoo SI=F","https://finance.yahoo.com/quote/SI=F", lambda: src_yahoo("SI=F")),
+                                      ("Stooq XAGUSD","https://stooq.com/q/d/l/?s=xagusd&i=d", lambda: src_stooq("xagusd"))]),
+    ("LME Copper", 0, "~${v}/t",    [("Yahoo HG=F x2204.62 (LME proxy)","https://finance.yahoo.com/quote/HG=F", lambda: src_yahoo("HG=F", LB_TO_T)),
+                                      ("Stooq HG.F x2204.62 (LME proxy)","https://stooq.com/q/d/l/?s=hg.f&i=d", lambda: src_stooq("hg.f", LB_TO_T))]),
 ]
 
 def fmt_px(tpl, v, decimals):
-    s = ("{:,.%df}" % decimals).format(v)
-    return tpl.replace("{v}", s)
+    return tpl.replace("{v}", ("{:,.%df}" % decimals).format(v))
 
 def build():
-    instruments = {}
-    errors = {}
-    for nm, kind, url, mult, dec, tpl, srcn, srcu in CFG:
-        try:
-            text = http_get(url)
-            series = parse_fred(text) if kind == "fred" else parse_stooq(text, mult)
-            c = compute(series, dec)
-            if not c:
-                errors[nm] = "no data parsed"
-                continue
-            px = fmt_px(tpl, c["px_val"], dec)
-            instruments[nm] = {
-                "px": px, "pxEn": px, "asof_iso": c["asof"],
-                "asof": "%d/%d" % (datetime.date.fromisoformat(c["asof"]).month, datetime.date.fromisoformat(c["asof"]).day),
-                "w": c["w"], "m": c["m"], "y": c["y"], "yl": "YTD",
-                "series": c["series"], "srcName": srcn, "srcUrl": srcu,
-            }
-            print("OK  %-12s %s  (1W %s / 1M %s / YTD %s)  pts=%d" % (nm, px, c["w"], c["m"], c["y"], len(c["series"])))
-        except Exception as e:
-            errors[nm] = str(e)
-            print("ERR %-12s %s" % (nm, e), file=sys.stderr)
-    out = {
-        "updated": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
-        "note": "Real daily closes. WTI/Brent/HenryHub/Gold via FRED; Silver/Copper via Stooq (Copper=COMEX x2204.62, LME proxy). TTF not included (no free daily feed).",
-        "instruments": instruments,
-    }
+    instruments, errors = {}, {}
+    for nm, dec, tpl, sources in CFG:
+        got = None; used = None; tries = []
+        for label, url, fn in sources:
+            try:
+                series = fn(); c = compute(series, dec)
+                if c:
+                    got, used = c, (label, url); break
+            except Exception as e:
+                tries.append("%s: %s" % (label, e))
+        if not got:
+            errors[nm] = " | ".join(tries) or "no source"
+            print("ERR %-12s %s" % (nm, errors[nm]), file=sys.stderr); continue
+        d0 = datetime.date.fromisoformat(got["asof"])
+        instruments[nm] = {"px": fmt_px(tpl, got["px_val"], dec), "pxEn": fmt_px(tpl, got["px_val"], dec),
+                           "asof_iso": got["asof"], "asof": "%d/%d" % (d0.month, d0.day),
+                           "w": got["w"], "m": got["m"], "y": got["y"], "yl": "YTD",
+                           "series": got["series"], "srcName": used[0], "srcUrl": used[1]}
+        print("OK  %-12s %s  via %-28s asof %s (1W %s 1M %s YTD %s) pts=%d"
+              % (nm, instruments[nm]["px"], used[0], got["asof"], got["w"], got["m"], got["y"], len(got["series"])))
+    out = {"updated": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+           "note": "Real daily closes; per-instrument source shown in srcName (Yahoo preferred for freshness, FRED/Stooq fallback). TTF not included (no free daily feed).",
+           "instruments": instruments}
     if errors:
         out["errors"] = errors
     return out
 
-# ---- self-test on embedded sample CSV (no network) ----
 def selftest():
-    fred_sample = "observation_date,DCOILWTICO\n2025-12-31,71.00\n2026-01-02,73.50\n2026-05-22,95.10\n2026-06-15,77.50\n2026-06-19,77.54\n2026-06-22,74.30\n"
-    s = parse_fred(fred_sample); c = compute(s, 2)
-    assert c["px_val"] == 74.30, c
-    assert c["asof"] == "2026-06-22"
-    assert c["y"] == pct(74.30, 71.00), c["y"]   # YTD vs prior-year-end 71.00
-    assert len(c["series"]) >= 3
-    stooq_sample = "Date,Open,High,Low,Close,Volume\n2026-06-19,6.20,6.35,6.18,6.30,1000\n2026-06-22,6.25,6.31,6.20,6.28,900\n"
-    s2 = parse_stooq(stooq_sample, LB_TO_T); c2 = compute(s2, 0)
-    assert round(c2["px_val"]) == round(6.28 * LB_TO_T), c2
-    print("SELFTEST OK: FRED ytd=%s px=%s ; Stooq copper $/t=%s" % (c["y"], c["px_val"], c2["px_val"]))
-
-if __name__ == "__main__":
-    if "--selftest" in sys.argv:
-        selftest()
-    else:
-        data = build()
-        with open("data.json", "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=1)
-        print("wrote data.json with %d instruments" % len(data["instruments"]))
+    s = src_fred.__wrapped__ if hasattr(src_fred, "__wrapped__") else None
+    # parser-only checks with inline samples
+    fred = "observation_date,X\n2025-12-31,71.00\n2026-06-22,74.30\n"
+  
