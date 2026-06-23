@@ -2,11 +2,9 @@ name: Fetch commodity data
 
 on:
   schedule:
-    # GitHub cron is UTC. 11:30 UTC ≈ 07:30 US-Eastern (EDT) — runs before the 8am dashboard build.
-    - cron: '30 11 * * *'
-    # second refresh mid-session
+    - cron: '30 11 * * *'   # ~07:30 ET, before the 8am dashboard build
     - cron: '0 20 * * *'
-  workflow_dispatch: {}   # lets you run it manually from the Actions tab
+  workflow_dispatch: {}
 
 permissions:
   contents: write
@@ -29,17 +27,19 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Fetch real daily prices -> data.json
-        run: python scripts/fetch_commodities.py
+      - name: Fetch real daily prices -> data.json (capture log)
+        run: |
+          set +e
+          python scripts/fetch_commodities.py 2>&1 | tee fetch.log
+          echo "exit_code=${PIPESTATUS[0]}" | tee -a fetch.log
+          echo "run_utc=$(date -u +%FT%TZ)" >> fetch.log
 
-      - name: Commit data.json if changed
+      - name: Commit data.json + fetch.log if changed
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data.json
+          git add data.json fetch.log
           if git diff --staged --quiet; then
-            echo "No change in data.json"
+            echo "No change"
           else
-            git commit -m "data: refresh $(date -u +%FT%TZ)"
-            git push
-          fi
+            git commit -m "data: refresh $(
