@@ -1,10 +1,11 @@
 TWELVEDATA_KEY present: True
-OK  WTI Crude    ~$3.31/bbl   asof 2026-06-22 1W -2.4   1M -25.3  YTD 103.1  pts 125  via TwelveData WTI
-ERR Brent Crude  HTTP Error 404: Not Found | HTTP Error 404: Not Found | HTTP Error 404: Not Found | The read operation timed out
-OK  US Nat Gas   ~$7.56/MMBtu asof 2026-06-22 1W -6.9   1M -2.2   YTD -18.9  pts 125  via TwelveData NG
-OK  Gold         ~$4,121/oz   asof 2026-06-23 1W -4.9   1M -8.5   YTD -4.4   pts 186  via TwelveData XAU/USD
+TD commodities available (32): GAU/EUR(Gold Gram), GAU/GBP(Gold Gram), GAU/IDR(Gold Gram), GAU/TRY(Gold Gram), GAU/USD(Gold Gram), HG1(Copper Spot), URALS/USD(Urals Crude Oil Sp), WTI/USD(Crude Oil WTI Spot), XAG/AUD(Silver Spot), XAG/CAD(Silver Spot), XAG/CHF(Silver Spot), XAG/EUR(Silver Spot), XAG/GBP(Silver Spot), XAGg/EUR(Gram Silver), XAGg/TRY(Gram Silver), XAGg/USD(Gram Silver), XAG/TRY(Silver Spot), XAG/USD(Silver Spot), XAU/AUD(Gold Spot), XAU/CAD(Gold Spot), XAU/CHF(Gold Spot), XAU/EUR(Gold Spot), XAU/GBP(Gold Spot), XAU/HKD(Gold Spot), XAU/JPY(Gold Spot), XAU/NZD(Gold Spot), XAU/SGD(Gold Spot), XAU/USD(Gold Spot), XAU/XAG(Gold Spot), XBR/USD(Brent Spot), XPD/USD(Palladium Spot), XPT/USD(Platinum Spot)
+ERR WTI Crude    HTTP Error 404: Not Found | The read operation timed out
+ERR Brent Crude  HTTP Error 404: Not Found | HTTP Error 404: Not Found | The read operation timed out
+ERR US Nat Gas   HTTP Error 404: Not Found | HTTP Error 404: Not Found | The read operation timed out
+OK  Gold         ~$4,123/oz   asof 2026-06-23 1W -4.8   1M -8.5   YTD -4.4   pts 186  via TwelveData XAU/USD
 ERR Silver       HTTP Error 404: Not Found
-ERR LME Copper   HTTP Error 404: Not Found | HTTP Error 404: Not Found | HTTP Error 404: Not Found
-wrote data.json: 3 ok, 3 errors
+ERR LME Copper   HTTP Error 404: Not Found | HTTP Error 404: Not Found
+wrote data.json: 1 ok, 5 errors
 exit_code=0
-run_utc=2026-06-23T06:02:39Z
+run_utc=2026-06-23T06:25:44Z
