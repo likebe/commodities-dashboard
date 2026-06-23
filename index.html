@@ -260,8 +260,8 @@ const CAL=[
  [{zh:"每周四",en:"Weekly Thu"},"",{zh:"EIA天然气库存周报",en:"EIA natural gas storage report"},{zh:"天然气",en:"Nat Gas"},{zh:"注入节奏vs5年均值（当前+5.8%）驱动价格（来源: <a class='src' href='https://www.eia.gov/naturalgas/storage/' target='_blank'>EIA</a>）",en:"Injection pace vs the 5-yr avg (now +5.8%) drives price (Src: <a class='src' href='https://www.eia.gov/naturalgas/storage/' target='_blank'>EIA</a>)"}],
  [{zh:"每周五",en:"Weekly Fri"},"",{zh:"CFTC COT持仓报告",en:"CFTC COT positioning report"},{zh:"金银/铜/原油",en:"Gold-Silver/Copper/Crude"},{zh:"持仓变化；当前银/铜净空、原油净多（来源: <a class='src' href='https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm' target='_blank'>CFTC</a>）",en:"Positioning shifts; silver/copper net short, crude net long currently (Src: <a class='src' href='https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm' target='_blank'>CFTC</a>)"}]
 ];
-const FOOT={zh:"<b>数据说明与免责：</b>价格为各品种前月/最活跃合约或基准现货，截至2026-06-22（美东时间）；走势由各时点锚定价插值重构为日频(可切换 日/周/月)，含轻微噪声以贴近日度形态，非真实日收盘价；部分锚点为近似值（标注约~）。LME铜走势为3个月期价/现货结算价区域。卡片内每条前的箭头表示对该品种价格的方向（▲利多/▼利空/→中性或双向），为编辑判断。本期仅覆盖基础档7品种（能源：WTI/Brent/Henry Hub/TTF；金属：黄金/白银/LME铜）；黑色、农产品及其他工业金属本期未启用。来源：CNBC、EIA、IEA、CFTC、CME、WGC、Bloomberg、Reuters、TradingEconomics、Al Jazeera、Fortune等（每条附可点击来源）。本dashboard为信息聚合，非投资建议。<br><br><b>最新更新：</b>2026-06-23 08:00（美东） · <b>下次更新：</b>2026-06-24（每日早8点自动更新）",
- en:"<b>Notes & disclaimer:</b> Prices are front-month/most-active contracts or benchmark spot, as of 2026-06-22 (ET); trends are interpolated from anchor points into a daily weekday series (switchable Daily/Weekly/Monthly) with light noise to mimic daily shape — not actual daily closes; some anchors approximate (marked ~). LME copper uses the 3-month/cash settlement region. The arrow before each line shows the directional read for that instrument's price (▲ bullish / ▼ bearish / → neutral or two-way) — editorial judgment. This edition covers only the 7 base instruments (Energy: WTI/Brent/Henry Hub/TTF; Metals: Gold/Silver/LME Copper); ferrous, ags and other industrial metals are not enabled this run. Sources: CNBC, EIA, IEA, CFTC, CME, WGC, Bloomberg, Reuters, TradingEconomics, Al Jazeera, Fortune etc. (each line carries a clickable source). This dashboard is an information aggregate, not investment advice.<br><br><b>Last updated:</b> 2026-06-23 08:00 ET · <b>Next update:</b> 2026-06-24 (auto daily 8am)"};
+const FOOT={zh:"<b>数据说明与免责：</b>价格为各品种前月/最活跃合约或基准现货，截至2026-06-22（美东时间）；走势由各时点锚定价插值重构为日频(可切换 日/周/月)，含轻微噪声以贴近日度形态，非真实日收盘价；部分锚点为近似值（标注约~）。LME铜走势为3个月期价/现货结算价区域。卡片内每条前的箭头表示对该品种价格的方向（▲利多/▼利空/→中性或双向），为编辑判断。本期仅覆盖基础档7品种（能源：WTI/Brent/Henry Hub/TTF；金属：黄金/白银/LME铜）；黑色、农产品及其他工业金属本期未启用。来源：CNBC、EIA、IEA、CFTC、CME、WGC、Bloomberg、Reuters、TradingEconomics、Al Jazeera、Fortune等（每条附可点击来源）。<b>价格/走势实时数据源：</b>WTI/Brent/Henry Hub/黄金 来自 FRED、白银/铜 来自 Stooq，由 GitHub Action 每日自动拉取真实日收盘（铜=COMEX折算LME代理；TTF暂无免费日频源、仍为近似锚点）。本dashboard为信息聚合，非投资建议。<br><br><b>最新更新：</b>2026-06-23 08:00（美东） · <b>下次更新：</b>2026-06-24（每日早8点自动更新）",
+ en:"<b>Notes & disclaimer:</b> Prices are front-month/most-active contracts or benchmark spot, as of 2026-06-22 (ET); trends are interpolated from anchor points into a daily weekday series (switchable Daily/Weekly/Monthly) with light noise to mimic daily shape — not actual daily closes; some anchors approximate (marked ~). LME copper uses the 3-month/cash settlement region. The arrow before each line shows the directional read for that instrument's price (▲ bullish / ▼ bearish / → neutral or two-way) — editorial judgment. This edition covers only the 7 base instruments (Energy: WTI/Brent/Henry Hub/TTF; Metals: Gold/Silver/LME Copper); ferrous, ags and other industrial metals are not enabled this run. Sources: CNBC, EIA, IEA, CFTC, CME, WGC, Bloomberg, Reuters, TradingEconomics, Al Jazeera, Fortune etc. (each line carries a clickable source). <b>Price/trend live data:</b> WTI/Brent/Henry Hub/Gold from FRED, Silver/Copper from Stooq, auto-fetched daily via GitHub Action as real daily closes (copper = COMEX scaled to an LME proxy; TTF has no free daily feed, stays an approximate anchor). This dashboard is an information aggregate, not investment advice.<br><br><b>Last updated:</b> 2026-06-23 08:00 ET · <b>Next update:</b> 2026-06-24 (auto daily 8am)"};
 
 function pdate(lbl){var y;var ym=lbl.match(/^(\d+)\/(\d+)$/);if(ym){var a=+ym[1],b=+ym[2];if(a>12){return new Date(2000+a,b-1,15);}return new Date(2026,a-1,b);}var mm=lbl.match(/^(\d+)月(初|中|末|均)?$/);if(mm){var mo=+mm[1];var dd=mm[2]==="初"?5:(mm[2]==="末"?25:15);return new Date(2026,mo-1,dd);}return new Date(2026,0,1);}
 function isod(dt){return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");}
@@ -424,8 +424,34 @@ function applyLang(){
   renderStatics();renderMacro();renderThemes();renderOv();renderGran();renderCards();renderViews();renderFlows();renderCal();
   pruneEmptySections();
 }
-document.getElementById('langbtn').addEventListener('click',function(){LANG=(LANG==='zh'?'en':'zh');applyLang();});
-applyLang();
+// ---- Live data: pull real daily closes from data.json (built daily by GitHub Action); fall back to baked values ----
+function mergeLiveData(cb){
+  if(!window.fetch){cb();return;}
+  fetch('data.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(j){
+    if(j&&j.instruments){var n=0,asof='';
+      DATA.forEach(function(d){var o=j.instruments[d.nmEn];if(!o)return;
+        if(o.px){d.px=o.px;d.pxEn=o.pxEn||o.px;}
+        if(o.asof){d.asof=o.asof;asof=o.asof;}
+        if(typeof o.w==='number')d.w=o.w;
+        if(typeof o.m==='number')d.m=o.m;
+        if(typeof o.y==='number')d.y=o.y;
+        if(o.yl)d.yl=o.yl;
+        if(o.series&&o.series.length){d._daily=o.series.map(function(p){return [p[0],p[1]];});}
+        d._live=true;n++;});
+      if(n)window.__live={n:n,asof:asof,updated:j.updated};
+    }
+    cb();
+  }).catch(function(){cb();});
+}
+function boot(){
+  applyLang();
+  var v=window.__live;
+  if(v&&v.n){var t=document.getElementById('htime');if(t){t.innerHTML+=(LANG==='zh'
+    ?' · <b style="color:var(--up)">● 实时</b> '+v.n+' 品种价格/走势取自 FRED/Stooq（截至 '+v.asof+'）'
+    :' · <b style="color:var(--up)">● Live</b> '+v.n+' instruments via FRED/Stooq (as of '+v.asof+')');}}
+}
+document.getElementById('langbtn').addEventListener('click',function(){LANG=(LANG==='zh'?'en':'zh');boot();});
+mergeLiveData(boot);
 </script>
 </body>
 </html>
