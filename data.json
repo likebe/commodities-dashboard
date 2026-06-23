@@ -1,19 +1,19 @@
 {
- "updated": "2026-06-23T07:06:05+00:00",
- "note": "Real daily closes. Energy via API Ninjas futures (FRED fallback + fresh tip); metals via Twelve Data. Value-band guarded. Copper->$/t. TTF not included.",
+ "updated": "2026-06-23T07:26:41+00:00",
+ "note": "Real daily closes. Energy: FRED history + API Ninjas fresh-latest tip. Metals: Twelve Data. Value-band guarded. Copper->$/t. TTF not included.",
  "keys": {
   "twelvedata": true,
   "apininjas": true
  },
  "instruments": {
   "Gold": {
-   "px": "~$4,117/oz",
-   "pxEn": "~$4,117/oz",
+   "px": "~$4,123/oz",
+   "pxEn": "~$4,123/oz",
    "asof_iso": "2026-06-23",
    "asof": "6/23",
-   "w": -4.9,
-   "m": -8.6,
-   "y": -4.5,
+   "w": -4.8,
+   "m": -8.5,
+   "y": -4.4,
    "yl": "YTD",
    "series": [
     [
@@ -758,7 +758,7 @@
     ],
     [
      "2026-06-23",
-     4117.0
+     4123.0
     ]
    ],
    "srcName": "TwelveData XAU/USD",
@@ -766,10 +766,10 @@
   }
  },
  "errors": {
-  "WTI Crude": "HTTP Error 400: Bad Request | The read operation timed out",
-  "Brent Crude": "HTTP Error 400: Bad Request | The read operation timed out",
-  "US Nat Gas": "HTTP Error 400: Bad Request | The read operation timed out",
-  "Silver": "HTTP Error 404: Not Found",
-  "LME Copper": "HTTP Error 404: Not Found | HTTP Error 404: Not Found"
+  "WTI Crude": "The read operation timed out",
+  "Brent Crude": "The read operation timed out",
+  "US Nat Gas": "The read operation timed out",
+  "Silver": "HTTP 404 TD XAG/USD {\"code\":404,\"message\":\"This symbol is available starting with the Grow or Venture plan. Consider upgrading now at https: | HTTP 404 TD SILVER/USD {\"code\":404,\"message\":\"**symbol** or **figi** parameter is missing or invalid. Please provide a valid symbol according t",
+  "LME Copper": "HTTP 404 TD XCU/USD {\"code\":404,\"message\":\"**symbol** or **figi** parameter is missing or invalid. Please provide a valid symbol according t | HTTP 404 TD COPPER/USD {\"code\":404,\"message\":\"**symbol** or **figi** parameter is missing or invalid. Please provide a valid symbol according t"
  }
 }
