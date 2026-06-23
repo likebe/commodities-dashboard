@@ -428,7 +428,7 @@ function applyLang(){
 function mergeLiveData(cb){
   if(!window.fetch){cb();return;}
   fetch('data.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(j){
-    if(j&&j.instruments){var n=0,asof='';
+    var _age=(j&&j.updated)?(Date.now()-new Date(j.updated).getTime())/86400000:999;if(j&&j.instruments&&_age<=4){var n=0,asof='';
       DATA.forEach(function(d){var o=j.instruments[d.nmEn];if(!o)return;
         if(o.px){d.px=o.px;d.pxEn=o.pxEn||o.px;}
         if(o.asof){d.asof=o.asof;asof=o.asof;}

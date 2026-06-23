@@ -1,10 +1,7 @@
 name: Fetch commodity data
 
 on:
-  schedule:
-    - cron: '30 11 * * *'
-    - cron: '0 20 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch: {}   # manual only; primary refresh is the LOCAL fetcher on your machine
 
 permissions:
   contents: write
