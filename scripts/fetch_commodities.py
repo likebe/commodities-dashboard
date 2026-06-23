@@ -1,49 +1,55 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Fetch REAL daily commodity prices -> data.json for the dashboard.
-Runs on GitHub Actions. Stdlib only.
+Fetch REAL daily commodity prices -> data.json (runs on GitHub Actions, stdlib only).
 
-Per instrument it tries sources in order until one returns data:
-  1) Yahoo Finance chart API (near-real-time daily, covers all)   <- preferred (fresh)
-  2) FRED fredgraph.csv (authoritative but lags ~1wk; energy only) <- fallback
-  3) Stooq daily CSV (metals fallback; may be IP-blocked on cloud)
-Whatever a run can't get is logged in data.json["errors"] and the page
-falls back to its baked value for that instrument.
-TTF (Europe gas) has no reliable free daily feed -> left to baked/approx.
+Primary source: Twelve Data time_series (key from env TWELVEDATA_KEY; free tier).
+Fallback for energy: FRED fredgraph.csv (authoritative, lags ~1wk).
+The API key is read from the environment and NEVER printed or committed.
+Per-instrument result + any errors are written into data.json and printed to the log.
+TTF (Europe gas) has no reliable free daily feed -> left to the page's baked value.
 """
-import csv, io, json, sys, datetime, urllib.request
+import os, io, csv, sys, json, time, datetime, urllib.request, urllib.parse
 
-UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"}
+KEY = os.environ.get("TWELVEDATA_KEY", "").strip()
+UA = {"User-Agent": "commodities-dashboard/1.0"}
 LB_TO_T = 2204.62
+TD_URL = "https://api.twelvedata.com/time_series"
+_td_calls = 0
 
 def http_get(url):
     req = urllib.request.Request(url, headers=UA)
     with urllib.request.urlopen(req, timeout=40) as r:
         return r.read().decode("utf-8", "replace")
 
-# ---------- source parsers -> ascending list of (date, value) ----------
-def src_yahoo(symbol, mult=1.0):
-    url = "https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=1d&range=6mo" % symbol
-    j = json.loads(http_get(url))
-    res = j.get("chart", {}).get("result")
-    if not res:
-        raise ValueError("yahoo empty")
-    r0 = res[0]
-    ts = r0.get("timestamp") or []
-    closes = r0.get("indicators", {}).get("quote", [{}])[0].get("close") or []
+def td_series(symbol):
+    """Twelve Data daily close series, ascending. Respects free-tier 8 req/min."""
+    global _td_calls
+    if not KEY:
+        raise ValueError("no TWELVEDATA_KEY env")
+    if _td_calls:           # pace calls: free tier = 8/min
+        time.sleep(8)
+    _td_calls += 1
+    qs = urllib.parse.urlencode({"symbol": symbol, "interval": "1day",
+                                 "outputsize": 200, "apikey": KEY, "format": "JSON"})
+    j = json.loads(http_get(TD_URL + "?" + qs))   # key is in URL only; never logged
+    if isinstance(j, dict) and j.get("status") == "error":
+        raise ValueError("TD %s -> %s" % (symbol, str(j.get("message", ""))[:110]))
+    vals = j.get("values") if isinstance(j, dict) else None
+    if not vals:
+        raise ValueError("TD %s -> no values" % symbol)
     out = []
-    for t, c in zip(ts, closes):
-        if c is None:
+    for row in vals:
+        try:
+            out.append((datetime.date.fromisoformat(row["datetime"][:10]), float(row["close"])))
+        except (ValueError, KeyError, TypeError):
             continue
-        d = datetime.datetime.fromtimestamp(t, datetime.timezone.utc).date()
-        out.append((d, float(c) * mult))
     out.sort(key=lambda x: x[0])
     if not out:
-        raise ValueError("yahoo no points")
+        raise ValueError("TD %s -> empty parse" % symbol)
     return out
 
-def src_fred(series_id):
+def fred_series(series_id):
     text = http_get("https://fred.stlouisfed.org/graph/fredgraph.csv?id=%s" % series_id)
     out = []
     for row in list(csv.reader(io.StringIO(text)))[1:]:
@@ -58,29 +64,9 @@ def src_fred(series_id):
             continue
     out.sort(key=lambda x: x[0])
     if not out:
-        raise ValueError("fred no data")
+        raise ValueError("FRED %s -> no data" % series_id)
     return out
 
-def src_stooq(symbol, mult=1.0):
-    text = http_get("https://stooq.com/q/d/l/?s=%s&i=d" % symbol)
-    rows = list(csv.reader(io.StringIO(text)))
-    if not rows or not rows[0] or "Date" not in rows[0][0]:
-        raise ValueError("stooq blocked/empty")
-    ci = rows[0].index("Close")
-    out = []
-    for row in rows[1:]:
-        if len(row) <= ci:
-            continue
-        try:
-            out.append((datetime.date.fromisoformat(row[0]), float(row[ci]) * mult))
-        except (ValueError, IndexError):
-            continue
-    out.sort(key=lambda x: x[0])
-    if not out:
-        raise ValueError("stooq no data")
-    return out
-
-# ---------- metrics ----------
 def val_on_or_before(series, target):
     pick = None
     for d, v in series:
@@ -94,34 +80,31 @@ def pct(new, old):
     return None if old in (None, 0) else round((new / old - 1.0) * 100.0, 1)
 
 def compute(series, decimals):
-    if not series:
-        return None
     last_d, last_v = series[-1]
     w = val_on_or_before(series, last_d - datetime.timedelta(days=7))
     m = val_on_or_before(series, last_d - datetime.timedelta(days=30))
-    yb = val_on_or_before(series, datetime.date(last_d.year - 1, 12, 31))
-    if yb is None:
-        yb = next(((d, v) for d, v in series if d.year == last_d.year), None)
+    yb = val_on_or_before(series, datetime.date(last_d.year - 1, 12, 31)) \
+         or next(((d, v) for d, v in series if d.year == last_d.year), None)
     cutoff = last_d - datetime.timedelta(days=185)
     recent = [[d.isoformat(), round(v, decimals)] for d, v in series if d >= cutoff]
     return {"px_val": round(last_v, decimals), "asof": last_d.isoformat(),
             "w": pct(last_v, w[1] if w else None), "m": pct(last_v, m[1] if m else None),
             "y": pct(last_v, yb[1] if yb else None), "series": recent}
 
-# nmEn -> (decimals, px_tpl, [ (label,url,callable) ... ])
+def scale_copper(series):
+    """Twelve Data copper may be $/lb (~6) or $/tonne (~13000). Normalize to $/tonne."""
+    if series and series[-1][1] < 100:
+        return [(d, v * LB_TO_T) for d, v in series]
+    return series
+
+# nmEn -> (decimals, px_tpl, scaler, [TD symbol candidates], FRED fallback id or None)
 CFG = [
-    ("WTI Crude",  2, "~${v}/bbl",  [("Yahoo CL=F","https://finance.yahoo.com/quote/CL=F", lambda: src_yahoo("CL=F")),
-                                      ("FRED DCOILWTICO","https://fred.stlouisfed.org/series/DCOILWTICO", lambda: src_fred("DCOILWTICO"))]),
-    ("Brent Crude",2, "~${v}/bbl",  [("Yahoo BZ=F","https://finance.yahoo.com/quote/BZ=F", lambda: src_yahoo("BZ=F")),
-                                      ("FRED DCOILBRENTEU","https://fred.stlouisfed.org/series/DCOILBRENTEU", lambda: src_fred("DCOILBRENTEU"))]),
-    ("US Nat Gas", 2, "~${v}/MMBtu",[("Yahoo NG=F","https://finance.yahoo.com/quote/NG=F", lambda: src_yahoo("NG=F")),
-                                      ("FRED DHHNGSP","https://fred.stlouisfed.org/series/DHHNGSP", lambda: src_fred("DHHNGSP"))]),
-    ("Gold",       0, "~${v}/oz",   [("Yahoo GC=F","https://finance.yahoo.com/quote/GC=F", lambda: src_yahoo("GC=F")),
-                                      ("Stooq XAUUSD","https://stooq.com/q/d/l/?s=xauusd&i=d", lambda: src_stooq("xauusd"))]),
-    ("Silver",     2, "~${v}/oz",   [("Yahoo SI=F","https://finance.yahoo.com/quote/SI=F", lambda: src_yahoo("SI=F")),
-                                      ("Stooq XAGUSD","https://stooq.com/q/d/l/?s=xagusd&i=d", lambda: src_stooq("xagusd"))]),
-    ("LME Copper", 0, "~${v}/t",    [("Yahoo HG=F x2204.62 (LME proxy)","https://finance.yahoo.com/quote/HG=F", lambda: src_yahoo("HG=F", LB_TO_T)),
-                                      ("Stooq HG.F x2204.62 (LME proxy)","https://stooq.com/q/d/l/?s=hg.f&i=d", lambda: src_stooq("hg.f", LB_TO_T))]),
+    ("WTI Crude",  2, "~${v}/bbl",   None,         ["WTI/USD", "WTI"],            "DCOILWTICO"),
+    ("Brent Crude",2, "~${v}/bbl",   None,         ["XBR/USD", "BRENT/USD", "UKOIL"], "DCOILBRENTEU"),
+    ("US Nat Gas", 2, "~${v}/MMBtu", None,         ["NG/USD", "NG", "NATGAS/USD"], "DHHNGSP"),
+    ("Gold",       0, "~${v}/oz",    None,         ["XAU/USD"],                   None),
+    ("Silver",     2, "~${v}/oz",    None,         ["XAG/USD"],                   None),
+    ("LME Copper", 0, "~${v}/t",     scale_copper, ["XCU/USD", "COPPER", "HG/USD"], None),
 ]
 
 def fmt_px(tpl, v, decimals):
@@ -129,34 +112,45 @@ def fmt_px(tpl, v, decimals):
 
 def build():
     instruments, errors = {}, {}
-    for nm, dec, tpl, sources in CFG:
-        got = None; used = None; tries = []
-        for label, url, fn in sources:
+    for nm, dec, tpl, scaler, td_syms, fred_id in CFG:
+        series = None; src = None; tries = []
+        for sym in td_syms:
             try:
-                series = fn(); c = compute(series, dec)
-                if c:
-                    got, used = c, (label, url); break
+                s = td_series(sym)
+                if scaler:
+                    s = scaler(s)
+                series, src = s, ("TwelveData %s" % sym, "https://twelvedata.com/")
+                break
             except Exception as e:
-                tries.append("%s: %s" % (label, e))
-        if not got:
+                tries.append(str(e))
+        if series is None and fred_id:
+            try:
+                series = fred_series(fred_id)
+                src = ("FRED %s (fallback, ~1wk lag)" % fred_id, "https://fred.stlouisfed.org/series/%s" % fred_id)
+            except Exception as e:
+                tries.append(str(e))
+        if series is None:
             errors[nm] = " | ".join(tries) or "no source"
-            print("ERR %-12s %s" % (nm, errors[nm]), file=sys.stderr); continue
-        d0 = datetime.date.fromisoformat(got["asof"])
-        instruments[nm] = {"px": fmt_px(tpl, got["px_val"], dec), "pxEn": fmt_px(tpl, got["px_val"], dec),
-                           "asof_iso": got["asof"], "asof": "%d/%d" % (d0.month, d0.day),
-                           "w": got["w"], "m": got["m"], "y": got["y"], "yl": "YTD",
-                           "series": got["series"], "srcName": used[0], "srcUrl": used[1]}
-        print("OK  %-12s %s  via %-28s asof %s (1W %s 1M %s YTD %s) pts=%d"
-              % (nm, instruments[nm]["px"], used[0], got["asof"], got["w"], got["m"], got["y"], len(got["series"])))
+            print("ERR %-12s %s" % (nm, errors[nm]))
+            continue
+        c = compute(series, dec)
+        d0 = datetime.date.fromisoformat(c["asof"])
+        instruments[nm] = {"px": fmt_px(tpl, c["px_val"], dec), "pxEn": fmt_px(tpl, c["px_val"], dec),
+                           "asof_iso": c["asof"], "asof": "%d/%d" % (d0.month, d0.day),
+                           "w": c["w"], "m": c["m"], "y": c["y"], "yl": "YTD",
+                           "series": c["series"], "srcName": src[0], "srcUrl": src[1]}
+        print("OK  %-12s %-12s asof %-10s 1W %-6s 1M %-6s YTD %-6s pts %-4d via %s"
+              % (nm, instruments[nm]["px"], c["asof"], c["w"], c["m"], c["y"], len(c["series"]), src[0]))
     out = {"updated": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
-           "note": "Real daily closes; per-instrument source shown in srcName (Yahoo preferred for freshness, FRED/Stooq fallback). TTF not included (no free daily feed).",
-           "instruments": instruments}
+           "note": "Real daily closes via Twelve Data (FRED fallback for energy). Copper normalized to $/t. TTF not included (no free daily feed).",
+           "key_present": bool(KEY), "instruments": instruments}
     if errors:
         out["errors"] = errors
     return out
 
-def selftest():
-    s = src_fred.__wrapped__ if hasattr(src_fred, "__wrapped__") else None
-    # parser-only checks with inline samples
-    fred = "observation_date,X\n2025-12-31,71.00\n2026-06-22,74.30\n"
-  
+if __name__ == "__main__":
+    print("TWELVEDATA_KEY present:", bool(KEY))
+    data = build()
+    with open("data.json", "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=1)
+    print("wrote data.json: %d ok, %d errors" % (len(data["instruments"]), len(data.get("errors", {}))))

@@ -2,7 +2,7 @@ name: Fetch commodity data
 
 on:
   schedule:
-    - cron: '30 11 * * *'   # ~07:30 ET, before the 8am dashboard build
+    - cron: '30 11 * * *'
     - cron: '0 20 * * *'
   workflow_dispatch: {}
 
@@ -28,6 +28,8 @@ jobs:
           python-version: '3.12'
 
       - name: Fetch real daily prices -> data.json (capture log)
+        env:
+          TWELVEDATA_KEY: ${{ secrets.TWELVEDATA_KEY }}
         run: |
           set +e
           python scripts/fetch_commodities.py 2>&1 | tee fetch.log
@@ -42,4 +44,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "No change"
           else
-            git commit -m "data: refresh $(
+            git commit -m "data: refresh $(date -u +%FT%TZ)"
+            git push
+          fi
