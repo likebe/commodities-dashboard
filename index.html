@@ -127,7 +127,7 @@ const SECNAME={energy:{zh:"能源",en:"Energy"},metals:{zh:"金属",en:"Metals"}
 const T={
  ovHead:{zh:["板块","品种","最新价","截至","1周","1月","YTD/1Y","一句话状态"],en:["Sector","Instrument","Last","As of","1W","1M","YTD/1Y","One-liner"]},
  filt:{zh:["全部","能源","金属","黑色","农产品"],en:["All","Energy","Metals","Ferrous","Ags"]},
- dlOv:{zh:"⤓ 导出总览 Excel",en:"⤓ Export overview (Excel)"},
+ dlOv:{zh:"⤓ 导出全部品种日度数据 (Excel)",en:"⤓ Export all daily data (Excel)"},
  dlData:{zh:"⤓ 数据",en:"⤓ Data"},
  drv:{zh:"核心驱动 Drivers",en:"Drivers"},
  nws:{zh:"近两周新闻 / 边际变化",en:"News / marginal changes (2wk)"},
@@ -300,10 +300,43 @@ function renderOv(){
 document.getElementById('ovfilters').addEventListener('click',function(e){var b=e.target.closest('.fbtn');if(!b)return;ovFilter=b.dataset.f;renderOv();});
 document.getElementById('granctl').addEventListener('click',function(e){var b=e.target.closest('.fbtn');if(!b)return;GRAN=b.dataset.g;renderGran();renderCards();});
 function exportOv(){
-  var rows=curRows();var H=T.ovHead[LANG];var header=[H[0],H[1],L({zh:"英文/合约",en:"Contract"}),H[2],H[3],"1W%","1M%","YTD/1Y%",L({zh:"区间",en:"Window"}),H[7]];
-  var body=rows.map(function(r){return [L(SECNAME[r.sec]),LANG==='zh'?r.nm:r.nmEn,r.en,LANG==='zh'?r.px:r.pxEn,r.asof,r.w,r.m,r.y,r.yl,L(r.st)];});
-  if(window.XLSX){var ws=XLSX.utils.aoa_to_sheet([header].concat(body));ws['!cols']=[{wch:8},{wch:14},{wch:20},{wch:14},{wch:7},{wch:8},{wch:8},{wch:9},{wch:9},{wch:34}];var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"overview");XLSX.writeFile(wb,"commodities_overview_2026-06-22.xlsx");}
-  else{var csv=String.fromCharCode(0xFEFF)+header.join(",")+"\n";body.forEach(function(row){csv+=row.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(",")+"\n";});var b=new Blob([csv],{type:"text/csv;charset=utf-8;"});var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="commodities_overview_2026-06-22.csv";document.body.appendChild(a);a.click();a.remove();}
+  var DSRC={
+    "WTI Crude":["TradingEconomics (WTI front-month)","https://tradingeconomics.com/commodity/crude-oil"],
+    "Brent Crude":["TradingEconomics (ICE Brent)","https://tradingeconomics.com/commodity/brent-crude-oil"],
+    "US Nat Gas":["TradingEconomics / EIA (Henry Hub)","https://tradingeconomics.com/commodity/natural-gas"],
+    "Europe Gas (TTF)":["TradingEconomics (ICE Dutch TTF)","https://tradingeconomics.com/commodity/eu-natural-gas"],
+    "Gold":["TradingEconomics / Kitco (spot)","https://tradingeconomics.com/commodity/gold"],
+    "Silver":["Kitco (spot)","https://www.kitco.com/charts/silver"],
+    "LME Copper":["TradingEconomics / LME (3M)","https://tradingeconomics.com/commodity/copper"]
+  };
+  var rows=DATA;var dt="2026-06-23";
+  var dh=L({zh:["日期","价格"],en:["Date","Price"]});
+  if(window.XLSX){
+    var wb=XLSX.utils.book_new();
+    var H=T.ovHead[LANG];
+    var ohdr=[H[0],H[1],L({zh:"英文/合约",en:"Contract"}),H[2],H[3],"1W%","1M%","YTD/1Y%",L({zh:"区间",en:"Window"}),H[7],L({zh:"数据来源",en:"Data source"}),L({zh:"来源链接",en:"Source URL"})];
+    var obody=rows.map(function(r){var s=DSRC[r.nmEn]||["",""];return [L(SECNAME[r.sec]),LANG==='zh'?r.nm:r.nmEn,r.en,LANG==='zh'?r.px:r.pxEn,r.asof,r.w,r.m,r.y,r.yl,L(r.st),s[0],s[1]];});
+    var ows=XLSX.utils.aoa_to_sheet([ohdr].concat(obody));ows['!cols']=[{wch:8},{wch:16},{wch:20},{wch:14},{wch:7},{wch:8},{wch:8},{wch:9},{wch:9},{wch:34},{wch:24},{wch:48}];
+    XLSX.utils.book_append_sheet(wb,ows,L({zh:"总览",en:"Overview"}));
+    rows.forEach(function(d){
+      var s=DSRC[d.nmEn]||["",""];var nm=LANG==='zh'?d.nm:d.nmEn;
+      var top=[[nm+" ("+d.en+")"],[L({zh:"数据来源",en:"Data source"})+": "+s[0]],[L({zh:"来源链接",en:"Source URL"})+": "+s[1]],[L({zh:"频率：日度（由锚点插值重构，非真实日收盘价，仅供看势）",en:"Frequency: daily (interpolated from anchors, not actual daily closes)"})],dh];
+      var rws=genDaily(d).map(function(p){return [p[0],p[1]];});
+      var ws=XLSX.utils.aoa_to_sheet(top.concat(rws));ws['!cols']=[{wch:12},{wch:12}];
+      XLSX.utils.book_append_sheet(wb,ws,sanit(d.nmEn).slice(0,28));
+    });
+    var shdr=L({zh:["品种","合约","数据来源","来源链接"],en:["Instrument","Contract","Data source","Source URL"]});
+    var sbody=rows.map(function(r){var s=DSRC[r.nmEn]||["",""];return [LANG==='zh'?r.nm:r.nmEn,r.en,s[0],s[1]];});
+    sbody.push(["—","—",L({zh:"说明",en:"Note"}),L({zh:"价格为近月/现货近似值(~)，截至6/22；走势为锚点插值重构、非真实日收盘价；卡片内各条结论另附独立来源链接，可点击溯源",en:"Prices are approximate front-month/spot (~) as of 6/22; trends are interpolated from anchors (not actual closes); each card line carries its own clickable source link"})]);
+    var sws=XLSX.utils.aoa_to_sheet([shdr].concat(sbody));sws['!cols']=[{wch:16},{wch:18},{wch:24},{wch:48}];
+    XLSX.utils.book_append_sheet(wb,sws,L({zh:"数据来源",en:"Sources"}));
+    XLSX.writeFile(wb,"commodities_all_daily_"+dt+".xlsx");
+  }else{
+    var hdr=[L({zh:"板块",en:"Sector"}),L({zh:"品种",en:"Instrument"}),L({zh:"合约",en:"Contract"}),L({zh:"日期",en:"Date"}),L({zh:"价格",en:"Price"}),L({zh:"数据来源",en:"Data source"}),L({zh:"来源链接",en:"Source URL"})];
+    var csv=String.fromCharCode(0xFEFF)+hdr.join(",")+"\n";
+    rows.forEach(function(d){var s=DSRC[d.nmEn]||["",""];genDaily(d).forEach(function(p){csv+=[L(SECNAME[d.sec]),LANG==='zh'?d.nm:d.nmEn,d.en,p[0],p[1],s[0],s[1]].map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(",")+"\n";});});
+    var b=new Blob([csv],{type:"text/csv;charset=utf-8;"});var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="commodities_all_daily_"+dt+".csv";document.body.appendChild(a);a.click();a.remove();
+  }
 }
 document.getElementById('ovdl').addEventListener('click',exportOv);
 
