@@ -1,16 +1,19 @@
 {
- "updated": "2026-06-23T06:25:44+00:00",
- "note": "Real daily closes; Twelve Data (metals) + FRED fallback (energy, ~1wk lag). Value-band guarded. Copper->$/t. TTF not included.",
- "key_present": true,
+ "updated": "2026-06-23T07:06:05+00:00",
+ "note": "Real daily closes. Energy via API Ninjas futures (FRED fallback + fresh tip); metals via Twelve Data. Value-band guarded. Copper->$/t. TTF not included.",
+ "keys": {
+  "twelvedata": true,
+  "apininjas": true
+ },
  "instruments": {
   "Gold": {
-   "px": "~$4,123/oz",
-   "pxEn": "~$4,123/oz",
+   "px": "~$4,117/oz",
+   "pxEn": "~$4,117/oz",
    "asof_iso": "2026-06-23",
    "asof": "6/23",
-   "w": -4.8,
-   "m": -8.5,
-   "y": -4.4,
+   "w": -4.9,
+   "m": -8.6,
+   "y": -4.5,
    "yl": "YTD",
    "series": [
     [
@@ -755,7 +758,7 @@
     ],
     [
      "2026-06-23",
-     4123.0
+     4117.0
     ]
    ],
    "srcName": "TwelveData XAU/USD",
@@ -763,9 +766,9 @@
   }
  },
  "errors": {
-  "WTI Crude": "HTTP Error 404: Not Found | The read operation timed out",
-  "Brent Crude": "HTTP Error 404: Not Found | HTTP Error 404: Not Found | The read operation timed out",
-  "US Nat Gas": "HTTP Error 404: Not Found | HTTP Error 404: Not Found | The read operation timed out",
+  "WTI Crude": "HTTP Error 400: Bad Request | The read operation timed out",
+  "Brent Crude": "HTTP Error 400: Bad Request | The read operation timed out",
+  "US Nat Gas": "HTTP Error 400: Bad Request | The read operation timed out",
   "Silver": "HTTP Error 404: Not Found",
   "LME Copper": "HTTP Error 404: Not Found | HTTP Error 404: Not Found"
  }
