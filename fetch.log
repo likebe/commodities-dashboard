@@ -1,0 +1,10 @@
+TWELVEDATA_KEY present: True
+OK  WTI Crude    ~$3.31/bbl   asof 2026-06-22 1W -2.4   1M -25.3  YTD 103.1  pts 125  via TwelveData WTI
+ERR Brent Crude  HTTP Error 404: Not Found | HTTP Error 404: Not Found | HTTP Error 404: Not Found | The read operation timed out
+OK  US Nat Gas   ~$7.56/MMBtu asof 2026-06-22 1W -6.9   1M -2.2   YTD -18.9  pts 125  via TwelveData NG
+OK  Gold         ~$4,121/oz   asof 2026-06-23 1W -4.9   1M -8.5   YTD -4.4   pts 186  via TwelveData XAU/USD
+ERR Silver       HTTP Error 404: Not Found
+ERR LME Copper   HTTP Error 404: Not Found | HTTP Error 404: Not Found | HTTP Error 404: Not Found
+wrote data.json: 3 ok, 3 errors
+exit_code=0
+run_utc=2026-06-23T06:02:39Z
